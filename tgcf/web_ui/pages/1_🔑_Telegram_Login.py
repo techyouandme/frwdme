@@ -29,6 +29,11 @@ if check_password(st):
         CONFIG.login.BOT_TOKEN = st.text_input(
             "Enter bot token", value=CONFIG.login.BOT_TOKEN, type="password"
         )
+        CONFIG.use_telegram_bot = st.checkbox(
+            "Enable Bot Controls",
+            value=CONFIG.use_telegram_bot,
+            help="Enable admin-only commands to start, stop, and check the status of the workflow via the bot."
+        )
     else:
         CONFIG.login.user_type = 1
         CONFIG.login.SESSION_STRING = st.text_input(

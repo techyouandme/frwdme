@@ -84,6 +84,13 @@ if check_password(st):
                     )
                     st.write("Write destinations one item per line")
 
+                    CONFIG.forwards[i].forwards_per_day = st.number_input(
+                        "Forwards per day (0 for unlimited)",
+                        value=CONFIG.forwards[i].forwards_per_day or 0,
+                        min_value=0,
+                        key=f"forwards_per_day {con}",
+                    )
+
                 with st.expander("Past Mode Settings"):
                     CONFIG.forwards[i].offset = int(
                         st.text_input(
