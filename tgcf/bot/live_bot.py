@@ -2,6 +2,9 @@
 
 import logging
 
+import os
+import signal
+import subprocess
 import yaml
 from telethon import events
 
@@ -121,6 +124,65 @@ async def style_command_handler(event):
         raise events.StopPropagation
 
 
+@admin_protect
+async def status_command_handler(event):
+    """Get the status of tgcf."""
+    if CONFIG.pid == 0:
+        await event.respond("TGCF is not running.")
+    else:
+        try:
+            os.kill(CONFIG.pid, 0)
+            await event.respond(f"TGCF is running with PID: {CONFIG.pid}")
+        except OSError:
+            await event.respond(f"TGCF is not running, but PID {CONFIG.pid} is in config. Please run /stop_workflow to clear it.")
+
+    await event.respond(display_forwards(config.CONFIG.forwards))
+    raise events.StopPropagation
+
+
+@admin_protect
+async def start_workflow_command_handler(event):
+    """Start the tgcf workflow."""
+    if CONFIG.pid != 0:
+        try:
+            os.kill(CONFIG.pid, 0)
+            await event.respond(f"TGCF is already running with PID: {CONFIG.pid}")
+            raise events.StopPropagation
+        except OSError:
+            await event.respond(f"PID {CONFIG.pid} found in config, but process is not running. Starting new one.")
+
+    mode = "live" if CONFIG.mode == 0 else "past"
+    with open("logs.txt", "w") as logs:
+        process = subprocess.Popen(
+            ["tgcf", "--loud", mode],
+            stdout=logs,
+            stderr=subprocess.STDOUT,
+        )
+    CONFIG.pid = process.pid
+    write_config(CONFIG)
+    await event.respond(f"TGCF started with PID: {CONFIG.pid}")
+    raise events.StopPropagation
+
+
+@admin_protect
+async def stop_workflow_command_handler(event):
+    """Stop the tgcf workflow."""
+    if CONFIG.pid == 0:
+        await event.respond("TGCF is not running.")
+        raise events.StopPropagation
+    try:
+        os.kill(CONFIG.pid, signal.SIGTERM)
+        await event.respond(f"TGCF with PID {CONFIG.pid} terminated.")
+    except ProcessLookupError:
+        await event.respond(f"Process with PID {CONFIG.pid} not found.")
+    except Exception as err:
+        await event.respond(f"Could not terminate. Error: {err}")
+    finally:
+        CONFIG.pid = 0
+        write_config(CONFIG)
+        raise events.StopPropagation
+
+
 async def start_command_handler(event):
     """Handle the /start command."""
     await event.respond(CONFIG.bot_messages.start)
@@ -140,6 +202,15 @@ def get_events():
         "remove": (remove_command_handler, events.NewMessage(pattern=f"{_}remove")),
         "style": (style_command_handler, events.NewMessage(pattern=f"{_}style")),
         "help": (help_command_handler, events.NewMessage(pattern=f"{_}help")),
+        "status": (status_command_handler, events.NewMessage(pattern=f"{_}status")),
+        "start_workflow": (
+            start_workflow_command_handler,
+            events.NewMessage(pattern=f"{_}start_workflow"),
+        ),
+        "stop_workflow": (
+            stop_workflow_command_handler,
+            events.NewMessage(pattern=f"{_}stop_workflow"),
+        ),
     }
 
     return command_events

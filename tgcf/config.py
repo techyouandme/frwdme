@@ -31,6 +31,7 @@ class Forward(BaseModel):
     dest: List[Union[int, str]] = []
     offset: int = 0
     end: Optional[int] = 0
+    forwards_per_day: Optional[int] = 0
 
 
 class LiveSettings(BaseModel):
@@ -92,6 +93,7 @@ class Config(BaseModel):
 
     plugins: PluginConfig = PluginConfig()
     bot_messages = BotMessages()
+    use_telegram_bot: bool = False
 
 
 def write_config_to_file(config: Config):
@@ -167,7 +169,7 @@ async def get_id(client: TelegramClient, peer):
 
 async def load_from_to(
     client: TelegramClient, forwards: List[Forward]
-) -> Dict[int, List[int]]:
+) -> Dict[int, Dict[str, Any]]:
     """Convert a list of Forward objects to a mapping.
 
     Args:
@@ -176,7 +178,7 @@ async def load_from_to(
 
     Returns:
         Dict: key = chat id of source
-                value = List of chat ids of destinations
+                value = {"dests": List of chat ids of destinations, "limit": forwards_per_day}
 
     Notes:
     -> The Forward objects may contain username/phn no/links
@@ -196,7 +198,10 @@ async def load_from_to(
         if not isinstance(source, int) and source.strip() == "":
             continue
         src = await _(forward.source)
-        from_to_dict[src] = [await _(dest) for dest in forward.dest]
+        from_to_dict[src] = {
+            "dests": [await _(dest) for dest in forward.dest],
+            "limit": forward.forwards_per_day,
+        }
     logging.info(f"From to dict is {from_to_dict}")
     return from_to_dict
 
