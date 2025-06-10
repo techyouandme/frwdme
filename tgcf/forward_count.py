@@ -15,7 +15,7 @@ else:
 
 def get_forward_count(source_id: int) -> int:
     """Gets the number of forwards for a source on the current day."""
-    if not forward_counts_col:
+    if forward_counts_col is None:
         return 0
     today = datetime.datetime.utcnow().date()
     today_str = today.isoformat()
@@ -26,7 +26,7 @@ def get_forward_count(source_id: int) -> int:
 
 def increment_forward_count(source_id: int):
     """Increments the forward count for a source on the current day."""
-    if not forward_counts_col:
+    if forward_counts_col is None:
         return
     today = datetime.datetime.utcnow().date()
     today_str = today.isoformat()
