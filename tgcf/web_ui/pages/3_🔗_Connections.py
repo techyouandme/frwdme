@@ -91,6 +91,12 @@ if check_password(st):
                         key=f"forwards_per_day {con}",
                     )
 
+                    CONFIG.forwards[i].watermark_text = st.text_input(
+                        "Watermark Text",
+                        value=CONFIG.forwards[i].watermark_text or "",
+                        key=f"watermark_text {con}",
+                    )
+
                 with st.expander("Past Mode Settings"):
                     CONFIG.forwards[i].offset = int(
                         st.text_input(

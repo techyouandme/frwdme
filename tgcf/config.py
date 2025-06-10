@@ -32,6 +32,7 @@ class Forward(BaseModel):
     offset: int = 0
     end: Optional[int] = 0
     forwards_per_day: Optional[int] = 0
+    watermark_text: Optional[str] = ""
 
 
 class LiveSettings(BaseModel):
@@ -178,7 +179,7 @@ async def load_from_to(
 
     Returns:
         Dict: key = chat id of source
-                value = {"dests": List of chat ids of destinations, "limit": forwards_per_day}
+                value = {"dests": List of chat ids of destinations, "limit": forwards_per_day, "watermark_text": watermark_text}
 
     Notes:
     -> The Forward objects may contain username/phn no/links
@@ -201,6 +202,7 @@ async def load_from_to(
         from_to_dict[src] = {
             "dests": [await _(dest) for dest in forward.dest],
             "limit": forward.forwards_per_day,
+            "watermark_text": forward.watermark_text,
         }
     logging.info(f"From to dict is {from_to_dict}")
     return from_to_dict

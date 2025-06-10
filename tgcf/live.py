@@ -29,6 +29,7 @@ async def new_message_handler(event: Union[Message, events.NewMessage]) -> None:
     forward_data = config.from_to.get(chat_id)
     limit = forward_data.get("limit")
     dest = forward_data.get("dests")
+    watermark_text = forward_data.get("watermark_text")
 
     if limit and limit > 0:
         count = forward_count.get_forward_count(chat_id)
@@ -53,6 +54,12 @@ async def new_message_handler(event: Union[Message, events.NewMessage]) -> None:
     tm = await apply_plugins(message)
     if not tm:
         return
+
+    if watermark_text:
+        if tm.text:
+            tm.text = f"{tm.text}\n\n{watermark_text}"
+        else:
+            tm.text = watermark_text
 
     if event.is_reply:
         r_event = st.DummyEvent(chat_id, event.reply_to_msg_id)
