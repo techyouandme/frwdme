@@ -15,7 +15,6 @@ from tgcf.bot import get_events
 from tgcf.config import CONFIG, get_SESSION
 from tgcf.plugins import apply_plugins, load_async_plugins
 from tgcf.utils import clean_session_files, send_message
-from tgcf import forward_count
 
 
 async def new_message_handler(event: Union[Message, events.NewMessage]) -> None:
@@ -25,19 +24,6 @@ async def new_message_handler(event: Union[Message, events.NewMessage]) -> None:
     if chat_id not in config.from_to:
         return
     logging.info(f"New message received in {chat_id}")
-
-    forward_data = config.from_to.get(chat_id)
-    limit = forward_data.get("limit")
-    dest = forward_data.get("dests")
-
-    if limit and limit > 0:
-        count = forward_count.get_forward_count(chat_id)
-        if count >= limit:
-            logging.warning(
-                f"Daily forward limit reached for source {chat_id}. Limit={limit}, Count={count}"
-            )
-            return
-
     message = event.message
 
     event_uid = st.EventUid(event)
@@ -49,6 +35,8 @@ async def new_message_handler(event: Union[Message, events.NewMessage]) -> None:
         for key in st.stored:
             del st.stored[key]
             break
+
+    dest = config.from_to.get(chat_id)
 
     tm = await apply_plugins(message)
     if not tm:
@@ -64,10 +52,6 @@ async def new_message_handler(event: Union[Message, events.NewMessage]) -> None:
             tm.reply_to = st.stored.get(r_event_uid).get(d)
         fwded_msg = await send_message(d, tm)
         st.stored[event_uid].update({d: fwded_msg})
-
-    if limit and limit > 0:
-        forward_count.increment_forward_count(chat_id)
-
     tm.clear()
 
 
@@ -154,11 +138,11 @@ async def start_sync() -> None:
         await client.start()
     config.is_bot = await client.is_bot()
     logging.info(f"config.is_bot={config.is_bot}")
+    command_events = get_events()
+
     await config.load_admins(client)
 
-    if CONFIG.use_telegram_bot:
-        command_events = get_events()
-        ALL_EVENTS.update(command_events)
+    ALL_EVENTS.update(command_events)
 
     for key, val in ALL_EVENTS.items():
         if config.CONFIG.live.delete_sync is False and key == "deleted":
