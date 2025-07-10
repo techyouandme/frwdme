@@ -4,6 +4,8 @@
 - past mode deals with all existing messages.
 """
 
+"""Patch for past.py to fix the private channel issue"""
+
 import asyncio
 import logging
 import time
@@ -39,10 +41,16 @@ async def forward_job() -> None:
         config.from_to = await config.load_from_to(client, config.CONFIG.forwards)
         client: TelegramClient
         for from_to, forward in zip(config.from_to.items(), config.CONFIG.forwards):
-            src, dest = from_to
+            src, dest_data = from_to
             last_id = 0
             forward: config.Forward
-            logging.info(f"Forwarding messages from {src} to {dest}")
+            
+            # Extract destinations
+            dest = dest_data.get("dests", [])
+            
+            # Debug log
+            logging.info(f"Source: {src}, Destinations: {dest}")
+            
             async for message in client.iter_messages(
                 src, reverse=True, offset_id=forward.offset
             ):
@@ -65,11 +73,28 @@ async def forward_job() -> None:
                             message.chat_id, message.reply_to_msg_id
                         )
                         r_event_uid = st.EventUid(r_event)
+                    
                     for d in dest:
+                        # Try to convert string to integer if it's a numeric string
+                        try:
+                            if isinstance(d, str) and d.strip('-').isdigit():
+                                d = int(d)
+                                logging.info(f"Converted string destination '{d}' to integer")
+                        except Exception as e:
+                            logging.warning(f"Error converting destination: {e}")
+                            
+                        logging.info(f"Forwarding to destination: {d} (type: {type(d).__name__})")
+                        
                         if message.is_reply and r_event_uid in st.stored:
                             tm.reply_to = st.stored.get(r_event_uid).get(d)
-                        fwded_msg = await send_message(d, tm)
-                        st.stored[event_uid].update({d: fwded_msg.id})
+                        
+                        try:
+                            fwded_msg = await send_message(d, tm)
+                            st.stored[event_uid].update({d: fwded_msg.id})
+                            logging.info(f"Successfully forwarded to {d}")
+                        except Exception as e:
+                            logging.error(f"Failed to forward to {d}: {e}")
+                            
                     tm.clear()
                     last_id = message.id
                     logging.info(f"forwarding message with id = {last_id}")
